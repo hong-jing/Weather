@@ -1,0 +1,12 @@
+<litepal>
+    <!--数据库名weather-->
+    <dbname value="weather"/>
+    <!--版本号-->
+    <version value="1"/>
+
+    <list>
+        <mapping class="com.example.hongjing.weather.db.Province"/>
+        <mapping class="com.example.hongjing.weather.db.City"/>
+        <mapping class="com.example.hongjing.weather.db.County"/>
+    </list>
+</litepal>
