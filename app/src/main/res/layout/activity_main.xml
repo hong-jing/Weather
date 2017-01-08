@@ -8,8 +8,7 @@
         android:id="@+id/choose_ares_fragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:name="com.example.hongjing.weather.util.ChooseFragment">
-
+        android:name="com.example.hongjing.weather.ChooseFragment">
     </fragment>
 
 

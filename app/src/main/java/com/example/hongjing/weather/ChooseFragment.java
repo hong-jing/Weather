@@ -1,10 +1,14 @@
-package com.example.hongjing.weather.util;
+package com.example.hongjing.weather;
 
+import android.annotation.TargetApi;
 import android.app.Fragment;
 import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,10 +19,11 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.hongjing.weather.R;
 import com.example.hongjing.weather.db.City;
 import com.example.hongjing.weather.db.County;
 import com.example.hongjing.weather.db.Province;
+import com.example.hongjing.weather.util.HttpUtil;
+import com.example.hongjing.weather.util.Utility;
 
 import org.litepal.crud.DataSupport;
 
@@ -35,6 +40,9 @@ import okhttp3.Response;
  */
 
 public class ChooseFragment extends Fragment {
+    private Context mContext;
+
+    private static final String TAG = "ChooseFragment";
     public static final int LEVEL_PROVINCE = 0;
     public static final int LEVEL_CITY = 1;
     public static final int LEVEL_COUNTY = 2;
@@ -58,6 +66,7 @@ public class ChooseFragment extends Fragment {
     private int mCurrentLevel;
 
 
+    @TargetApi(Build.VERSION_CODES.M)
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -65,10 +74,8 @@ public class ChooseFragment extends Fragment {
         mTitleText = (TextView) view.findViewById(R.id.title_text);
         mBackButton = (Button) view.findViewById(R.id.back_button);
         mListView = (ListView) view.findViewById(R.id.list_view);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            mAdapter = new ArrayAdapter<String>(getContext(), android.R.layout.simple_list_item_1, mDataList);
-        }
+        Log.d(TAG, "onCreateView: 初始化完成");
+        mAdapter = new ArrayAdapter<String>(getContext(), android.R.layout.simple_list_item_1, mDataList);
         mListView.setAdapter(mAdapter);
 
         return view;
@@ -88,9 +95,28 @@ public class ChooseFragment extends Fragment {
                 }else if (mCurrentLevel == LEVEL_CITY){
                     mSelectedCity = mCityList.get(position);
                     queryCounties();
+                }else if (mCurrentLevel == LEVEL_COUNTY){
+                    String weatherId = mCountyList.get(position).getWeatherId();
+                    Intent intent = new Intent(getActivity(), WeatherActivity.class);
+                    intent.putExtra("weather_id", weatherId);
+                    startActivity(intent);
+                    getActivity().finish();
                 }
             }
         });
+
+        mBackButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mCurrentLevel == LEVEL_COUNTY){
+                    queryCities();
+                }else if (mCurrentLevel == LEVEL_CITY){
+                    queryProvinces();
+                }
+            }
+        });
+
+        queryProvinces();
     }
 
     //查询市区
@@ -111,16 +137,16 @@ public class ChooseFragment extends Fragment {
         }else {
             int provinceCode = mSelectedProvince.getProvinceCode();
             int cityCode = mSelectedCity.getCityCode();
-            String address = "http://guolin.tech/api/china/" + provinceCode + cityCode;
+            String address = "http://guolin.tech/api/china/" + provinceCode + "/" + cityCode;
             queryFromServer(address, "county");
         }
     }
     //查询市
     private void queryCities() {
-        mTitleText.setText(mSelectedCity.getCityName());
+        mTitleText.setText(mSelectedProvince.getProvinceName());
         mBackButton.setVisibility(View.VISIBLE);
         mCityList = DataSupport.where("provinceid = ?", String.valueOf(mSelectedProvince.getId())).find(City.class);
-
+        Log.d(TAG, "queryCities: " + mCityList.toString());
         if (mCityList.size() > 0){
             mDataList.clear();
             for (City city : mCityList){
@@ -131,7 +157,7 @@ public class ChooseFragment extends Fragment {
             mCurrentLevel = LEVEL_CITY;
         }else {
             int provinceCode = mSelectedProvince.getProvinceCode();
-            String address = "http://guolin.tech/api/china" + provinceCode;
+            String address = "http://guolin.tech/api/china/" + provinceCode;
             queryFromServer(address, "city");
         }
     }
@@ -151,7 +177,7 @@ public class ChooseFragment extends Fragment {
             mListView.setSelection(0);
             mCurrentLevel = LEVEL_PROVINCE;
         }else {
-            String address = "http://guolin/api/china";
+            String address = "http://guolin.tech/api/china";
             queryFromServer(address, "province");
         }
     }
@@ -177,6 +203,7 @@ public class ChooseFragment extends Fragment {
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 String responseText = response.body().string();
+                Log.d(TAG, "onResponse Text:" + responseText);
                 boolean result = false;
 
                 if ("province".equals(type)){
